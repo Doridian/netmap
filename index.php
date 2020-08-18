@@ -6,6 +6,7 @@ require_once('vendor/autoload.php');
 require_once('device.php');
 require_once('network.php');
 require_once('wifi.php');
+require_once('link.php');
 
 header('Content-Type: text/plain');
 
@@ -17,8 +18,8 @@ if ($res !== true) {
     die('Controller login failure: ' . $res);
 }
 
-//$devices = $unifi->list_devices();
-$clients = $unifi->list_clients();
+$device_list = $unifi->list_devices();
+$client_list = $unifi->list_clients();
 $wifi_list = $unifi->list_wlanconf();
 $network_list = $unifi->list_networkconf();
 $dhcp_lease_list = $mikrotik->query(new \RouterOS\Query('/ip/dhcp-server/lease/print'))->read();
@@ -49,8 +50,20 @@ foreach ($dhcp_lease_list as $lease) {
 
 $devices = [];
 
-foreach ($clients as $client) {
+foreach ($device_list as $device) {
+    $mac = strtolower($device->mac);
+    $name = $device->name;
+    $network = $networks[''];
+    $ip = $device->ip;
+    $devices[$mac] = new Device($name, $mac, $network, null, $ip, $device);
+}
+
+foreach ($client_list as $client) {
     $mac = strtolower($client->mac);
+    if (!empty($devices[$mac])) {
+        continue;
+    }
+
     $lease = @$dhcp_leases[$mac];
     $ip = NULL;
     $name = NULL;
@@ -68,7 +81,7 @@ foreach ($clients as $client) {
         }
     }
 
-    if (empty($ip) && !empty($client->ip)) {
+    if (!empty($client->ip)) {
         $ip = $client->ip;
     }
 
@@ -96,7 +109,33 @@ foreach ($clients as $client) {
         $network = $networks[$client->network];
     }
 
-    $devices[] = new Device($name, $mac, $network, $wifi, $ip);
+    $devices[$mac] = new Device($name, $mac, $network, $wifi, $ip, $client);
+}
+
+foreach ($devices as $key=>$device) {
+    $raw = $device->raw;
+    unset($device->raw);
+
+    if (!empty($raw->sw_port) && !empty($raw->sw_mac)) {
+        $switch = $devices[$raw->sw_mac];
+
+        $link = new Link($switch, $raw->sw_port, $device, '');
+        $switch->links[] = $link;
+        $device->links[] = $link;
+    }
+
+    if (!empty($raw->uplink) && !empty($raw->uplink->uplink_mac)) {
+        $switch = $devices[$raw->uplink->uplink_mac];
+
+        $port_idx = '';
+        if (!empty($raw->uplink->port_idx)) {
+            $port_idx = $raw->uplink->port_idx;
+        }
+
+        $link = new Link($switch, $raw->uplink->uplink_remote_port, $device, $port_idx);
+        $switch->links[] = $link;
+        $device->links[] = $link;
+    }
 }
 
 var_dump($devices);
