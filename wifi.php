@@ -1,11 +1,18 @@
 <?php
 
-class WiFi {
+class WiFi implements JsonSerializable {
     public $name;
     public $network;
 
-    function __construct($name, $network) {
+    public function __construct($name, $network) {
         $this->name = $name;
         $this->network = $network;
+    }
+
+    public function jsonSerialize() {
+        return array(
+            'name' => $this->name,
+            'network' => $this->network->name,
+        );
     }
 }

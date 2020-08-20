@@ -8,8 +8,6 @@ require_once('network.php');
 require_once('wifi.php');
 require_once('link.php');
 
-header('Content-Type: text/plain');
-
 $unifi = new UniFi_API\Client($unifi_config['user'], $unifi_config['pass'], $unifi_config['host'], $unifi_config['site']);
 $mikrotik = new \RouterOS\Client($mikrotik_config);
 
@@ -25,9 +23,10 @@ $network_list = $unifi->list_networkconf();
 $dhcp_lease_list = $mikrotik->query(new \RouterOS\Query('/ip/dhcp-server/lease/print'))->read();
 
 $networks = [];
+$networks_by_vlan = [];
 foreach ($network_list as $network) {
     $networkObject = new Network($network->name, $network->vlan, @$network->ip_subnet);
-    $networks[$networkObject->vlan] = $networkObject;
+    $networks_by_vlan[$networkObject->vlan] = $networkObject;
     $networks[$networkObject->name] = $networkObject;
 }
 
@@ -38,7 +37,7 @@ foreach ($wifi_list as $wifi) {
     } else {
         $vlan = $wifi->vlan;
     }
-    $network = $networks[$vlan];
+    $network = $networks_by_vlan[$vlan];
     $wifiObj = new WiFi($wifi->name, $network);
     $wifis[$wifiObj->name] = $wifiObj;
 }
@@ -49,11 +48,12 @@ foreach ($dhcp_lease_list as $lease) {
 }
 
 $devices = [];
+$links = [];
 
 foreach ($device_list as $device) {
     $mac = strtolower($device->mac);
     $name = $device->name;
-    $network = $networks[''];
+    $network = $networks_by_vlan[1];
     $ip = $device->ip;
     $devices[$mac] = new Device($name, $mac, $network, null, $ip, $device);
 }
@@ -101,7 +101,7 @@ foreach ($client_list as $client) {
         $wifi_name = $client->essid;
         $wifi = $wifis[$wifi_name];
         if (!empty($client->vlan) && $client->vlan !== '0') {
-            $network = $networks[$client->vlan];
+            $network = $networks_by_vlan[$client->vlan];
         } else {
             $network = $wifi->network;
         }
@@ -119,9 +119,7 @@ foreach ($devices as $key=>$device) {
     if (!empty($raw->sw_port) && !empty($raw->sw_mac)) {
         $switch = $devices[$raw->sw_mac];
 
-        $link = new Link($switch, $raw->sw_port, $device, '');
-        $switch->links[] = $link;
-        $device->links[] = $link;
+        $links[] = new Link($switch, $raw->sw_port, $device, '');
     }
 
     if (!empty($raw->uplink) && !empty($raw->uplink->uplink_mac)) {
@@ -132,10 +130,14 @@ foreach ($devices as $key=>$device) {
             $port_idx = $raw->uplink->port_idx;
         }
 
-        $link = new Link($switch, $raw->uplink->uplink_remote_port, $device, $port_idx);
-        $switch->links[] = $link;
-        $device->links[] = $link;
+        $links[] = new Link($switch, $raw->uplink->uplink_remote_port, $device, $port_idx);
     }
 }
 
-var_dump($devices);
+header('Content-Type: application/json');
+die(json_encode(array(
+    'devices' => $devices,
+    'networks' => $networks,
+    'wifis' => $wifis,
+    'links' => $links,
+), JSON_PRETTY_PRINT));

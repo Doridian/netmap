@@ -1,16 +1,15 @@
 <?php
 
-class Device {
+class Device implements JsonSerializable {
     public $name;
     public $mac;
     public $ip;
     public $wifi;
     public $network;
-    public $links;
 
     public $raw;
 
-    function __construct($name, $mac, $network, $wifi, $ip, $raw) {
+    public function __construct($name, $mac, $network, $wifi, $ip, $raw) {
         $this->name = $name;
         $this->mac = $mac;
         $this->network = $network;
@@ -18,7 +17,25 @@ class Device {
         $this->ip = $ip;
 
         $this->raw = $raw;
+    }
 
-        $this->links = [];
+    public function jsonSerialize() {
+        $netName = null;
+        $wifiName = null;
+
+        if ($this->network) {
+            $netName = $this->network->name;
+        }
+        if ($this->wifi) {
+            $wifiName = $this->wifi->name;
+        }
+
+        return array(
+            'name' => $this->name,
+            'mac' => $this->mac,
+            'network' => $netName,
+            'wifi' => $wifiName,
+            'ip' => $this->ip,
+        );
     }
 }
