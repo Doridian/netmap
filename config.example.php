@@ -13,3 +13,6 @@ $unifi_config = [
     'host' => 'https://unifi:8443',
     'site' => 'default',
 ];
+
+$snmp_community = 'public';
+$snmp_networks = null; // ['device1','devices',...], if null, all devices

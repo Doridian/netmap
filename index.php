@@ -3,10 +3,10 @@
 require_once('config.php');
 
 require_once('vendor/autoload.php');
-require_once('device.php');
-require_once('network.php');
-require_once('wifi.php');
-require_once('link.php');
+require_once('inc/device.php');
+require_once('inc/network.php');
+require_once('inc/wifi.php');
+require_once('inc/link.php');
 
 $unifi = new UniFi_API\Client($unifi_config['user'], $unifi_config['pass'], $unifi_config['host'], $unifi_config['site']);
 $mikrotik = new \RouterOS\Client($mikrotik_config);
@@ -118,6 +118,8 @@ foreach ($devices as $key=>$device) {
 
     if (!empty($raw->sw_port) && !empty($raw->sw_mac)) {
         $switch = $devices[$raw->sw_mac];
+
+        $device->fetchSNMP();
 
         $links[] = new Link($switch, $raw->sw_port, $device, '');
     }
