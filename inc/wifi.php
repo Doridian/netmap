@@ -10,9 +10,9 @@ class WiFi implements JsonSerializable {
     }
 
     public function jsonSerialize() {
-        return array(
+        return [
             'name' => $this->name,
             'network' => $this->network->name,
-        );
+        ];
     }
 }

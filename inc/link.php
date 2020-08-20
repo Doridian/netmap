@@ -15,11 +15,11 @@ class Link implements JsonSerializable {
     }
 
     public function jsonSerialize() {
-        return array(
+        return [
             'first' => $this->first->mac,
             'firstPort' => (string)$this->firstPort,
             'second' => $this->second->mac,
             'secondPort' => (string)$this->secondPort,
-        );
+        ];
     }
 }

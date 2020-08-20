@@ -14,5 +14,6 @@ $unifi_config = [
     'site' => 'default',
 ];
 
-$snmp_community = 'public';
-$snmp_networks = null; // ['device1','devices',...], if null, all devices
+$remove_host_suffix = null;
+
+$main_ports = [];

@@ -95,7 +95,9 @@ foreach ($client_list as $client) {
         }
     }
 
-    $name = str_replace('.foxden.network', '', $name);
+    if ($remove_host_suffix) {
+        $name = str_replace($remove_host_suffix, '', $name);
+    }
 
     if (!empty($client->essid)) {
         $wifi_name = $client->essid;
@@ -119,7 +121,14 @@ foreach ($devices as $key=>$device) {
     if (!empty($raw->sw_port) && !empty($raw->sw_mac)) {
         $switch = $devices[$raw->sw_mac];
 
-        $device->fetchSNMP();
+        $mp_name = $switch->name . '.' . $raw->sw_port;
+        if (!empty($main_ports[$mp_name])) {
+            $mp_mac = $main_ports[$mp_name];
+            if ($device->mac !== $mp_mac) {
+                $switch = $devices[$mp_mac];
+                $raw->sw_port = '';
+            }
+        }
 
         $links[] = new Link($switch, $raw->sw_port, $device, '');
     }
@@ -137,9 +146,9 @@ foreach ($devices as $key=>$device) {
 }
 
 header('Content-Type: application/json');
-die(json_encode(array(
+die(json_encode([
     'devices' => $devices,
     'networks' => $networks,
     'wifis' => $wifis,
     'links' => $links,
-), JSON_PRETTY_PRINT));
+], JSON_PRETTY_PRINT));
